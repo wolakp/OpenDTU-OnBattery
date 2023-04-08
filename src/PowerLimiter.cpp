@@ -256,7 +256,7 @@ int32_t PowerLimiterClass::getDirectSolarPower()
         std::shared_ptr<InverterAbstract> inverter = Hoymiles.getInverterByPos(config.PowerLimiter_InverterId);
         float dcPower = inverter->Statistics()->getChannelFieldValue(TYPE_AC, (ChannelNum_t) config.PowerLimiter_InverterChannelId, FLD_PDC);
 
-        int32_t DirectSolarPower = (int)(Battery.current * Battery.voltage + dcPower);
+        int32_t DirectSolarPower = static_cast<int>(Battery.current * Battery.voltage + dcPower);
         if ( DirectSolarPower <= 0 ) {
             return 0;
         } else {
