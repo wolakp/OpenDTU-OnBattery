@@ -251,14 +251,19 @@ int32_t PowerLimiterClass::getDirectSolarPower()
     // when VeDirect is enabled use PV Power
     if (config.Vedirect_Enabled) {
         return VeDirect.veFrame.PPV;
-    // otherwise use Inverter DC Power + Battery charging Power
+    // otherwise use Inverter DC Power (Current*Voltage) + Battery Charging Power
     } else {
         std::shared_ptr<InverterAbstract> inverter = Hoymiles.getInverterByPos(config.PowerLimiter_InverterId);
-        float dcPower = inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t) config.PowerLimiter_InverterChannelId, FLD_PDC);
+        float dcPower = inverter->Statistics()->getChannelFieldValue(TYPE_AC, (ChannelNum_t) config.PowerLimiter_InverterChannelId, FLD_PDC);
 
-        return (Battery.current * Battery.voltage + dcPower);
+        int32_t DirectSolarPower = (int)(Battery.current * Battery.voltage + dcPower);
+        if ( DirectSolarPower <= 0 ) {
+            return 0;
+        } else {
+            return DirectSolarPower;
+        }
     }
-}
+}   
 
 float PowerLimiterClass::getLoadCorrectedVoltage(std::shared_ptr<InverterAbstract> inverter)
 {
