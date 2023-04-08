@@ -154,17 +154,21 @@ bool PowerLimiterClass::canUseDirectSolarPower()
 {
     CONFIG_T& config = Configuration.get();
 
-    if (!config.PowerLimiter_SolarPassTroughEnabled
-            || !config.Vedirect_Enabled) {
+    if (!config.PowerLimiter_SolarPassTroughEnabled) {
         return false;
     }
 
-    if (VeDirect.veFrame.PPV < 20) {
+    // get dc
+    std::shared_ptr<InverterAbstract> inverter = Hoymiles.getInverterByPos(config.PowerLimiter_InverterId);
+    float dcPower = inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t) config.PowerLimiter_InverterChannelId, FLD_PDC);
+
+    if ( VeDirect.veFrame.PPV > 50 || (dcPower + Battery.current * Battery.voltage) > 50 ) {
+        // enough power
+        return true;
+    } else {    
         // Not enough power
         return false;
     }
-
-    return true;
 }
 
 int32_t PowerLimiterClass::calcPowerLimit(std::shared_ptr<InverterAbstract> inverter, bool consumeSolarPowerOnly)
@@ -242,7 +246,18 @@ int32_t PowerLimiterClass::getDirectSolarPower()
         return 0;
     }
 
-    return VeDirect.veFrame.PPV;
+    CONFIG_T& config = Configuration.get();
+    
+    // when VeDirect provides value use it
+    if (config.Vedirect_Enabled) {
+        return VeDirect.veFrame.PPV;
+    // otherwise use inverter dc power + battery charging power
+    } else {
+        std::shared_ptr<InverterAbstract> inverter = Hoymiles.getInverterByPos(config.PowerLimiter_InverterId);
+        float dcPower = inverter->Statistics()->getChannelFieldValue(TYPE_DC, (ChannelNum_t) config.PowerLimiter_InverterChannelId, FLD_PDC);
+
+        return (Battery.current * Battery.voltage + dcPower);
+    }
 }
 
 float PowerLimiterClass::getLoadCorrectedVoltage(std::shared_ptr<InverterAbstract> inverter)
